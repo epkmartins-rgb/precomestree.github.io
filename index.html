@@ -1153,7 +1153,8 @@ function renderCompras() {
   let html = '';
 
   if (list.length === 0) {
-    html = `<div class="empty-state"><div class="icon">📋</div><p>Lista vazia!<br>Adicione itens para começar.</p></div>`;
+    html = `<div class="empty-state"><div class="icon">📋</div><p>Lista vazia!<br>Adicione itens para começar.</p></div>
+    <button class="btn-primary" onclick="openShopModal()" style="margin-top:16px">+ Adicionar item</button>`;
   } else {
     html += `<div class="shop-total">
       <div><div class="t-label">Estimativa total</div><div style="font-size:11px;color:var(--muted)">${uncheckedCount} item${uncheckedCount!==1?'s':''} restante${uncheckedCount!==1?'s':''}</div></div>

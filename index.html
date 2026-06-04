@@ -647,6 +647,40 @@
   </div>
 </div>
 
+<!-- Modal: Editar item da lista -->
+<div class="modal-bg" id="modal-shop-edit">
+  <div class="modal">
+    <div class="modal-title">
+      Editar item
+      <button class="close-btn" onclick="closeModal('modal-shop-edit')">✕</button>
+    </div>
+    <div class="field">
+      <label>Nome</label>
+      <input type="text" id="edit-shop-name" placeholder="Nome do produto">
+    </div>
+    <div class="field">
+      <label>Corredor</label>
+      <select id="edit-shop-corredor">
+        <option value="🥩 Carnes e Frios">🥩 Carnes e Frios</option>
+        <option value="🥛 Laticínios">🥛 Laticínios</option>
+        <option value="🍞 Padaria e Cereais">🍞 Padaria e Cereais</option>
+        <option value="🥫 Mercearia">🥫 Mercearia</option>
+        <option value="🧴 Higiene e Beleza">🧴 Higiene e Beleza</option>
+        <option value="🧹 Limpeza">🧹 Limpeza</option>
+        <option value="🥤 Bebidas">🥤 Bebidas</option>
+        <option value="🍎 Frutas e Verduras">🍎 Frutas e Verduras</option>
+        <option value="❄️ Congelados">❄️ Congelados</option>
+        <option value="📦 Outros">📦 Outros</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Quantidade</label>
+      <input type="number" id="edit-shop-qty" value="1" min="1" step="1">
+    </div>
+    <button class="btn-primary" onclick="saveShopEdit()">Salvar</button>
+  </div>
+</div>
+
 <!-- Modal: Novo item -->
 <div class="modal-bg" id="modal-new">
   <div class="modal">
@@ -1234,11 +1268,12 @@ function renderCompras() {
         }
         html += `<div class="shop-item ${s.checked ? 'checked' : ''}">
           <button class="shop-check ${s.checked ? 'checked' : ''}" onclick="toggleShopCheck('${s.id}')">✓</button>
-          <div style="flex:1">
+          <div style="flex:1" onclick="editShopItem('${s.id}')" style="cursor:pointer">
             <div class="shop-name">${s.name}</div>
             ${s.qty > 1 ? `<div class="shop-qty">Qtd: ${s.qty}</div>` : ''}
           </div>
           ${priceHtml}
+          <button class="shop-del" onclick="editShopItem('${s.id}')" style="color:var(--muted);font-size:14px" title="Editar">✏️</button>
           <button class="shop-del" onclick="removeShopItem('${s.id}')">✕</button>
         </div>`;
       });
@@ -1330,6 +1365,32 @@ function toggleShopCheck(id) {
   if (item) item.checked = !item.checked;
   saveShopList(list);
   renderCompras();
+}
+
+let editingShopId = null;
+
+function editShopItem(id) {
+  const list = loadShopList();
+  const item = list.find(s => s.id === id);
+  if (!item) return;
+  editingShopId = id;
+  document.getElementById('edit-shop-name').value = item.name;
+  document.getElementById('edit-shop-qty').value = item.qty || 1;
+  document.getElementById('edit-shop-corredor').value = item.corredor || '📦 Outros';
+  document.getElementById('modal-shop-edit').classList.add('open');
+}
+
+function saveShopEdit() {
+  const list = loadShopList();
+  const item = list.find(s => s.id === editingShopId);
+  if (!item) return;
+  item.name = document.getElementById('edit-shop-name').value.trim() || item.name;
+  item.qty = parseInt(document.getElementById('edit-shop-qty').value) || 1;
+  item.corredor = document.getElementById('edit-shop-corredor').value;
+  saveShopList(list);
+  closeModal('modal-shop-edit');
+  renderCompras();
+  showToast('✅ Item atualizado!');
 }
 
 function removeShopItem(id) {

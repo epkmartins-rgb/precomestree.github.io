@@ -624,6 +624,21 @@
       <div id="shop-suggestions" style="margin-top:6px;display:none;background:var(--surface2);border-radius:10px;overflow:hidden;border:1px solid var(--border)"></div>
     </div>
     <div class="field">
+      <label>Corredor</label>
+      <select id="shop-corredor">
+        <option value="🥩 Carnes e Frios">🥩 Carnes e Frios</option>
+        <option value="🥛 Laticínios">🥛 Laticínios</option>
+        <option value="🍞 Padaria e Cereais">🍞 Padaria e Cereais</option>
+        <option value="🥫 Mercearia">🥫 Mercearia</option>
+        <option value="🧴 Higiene e Beleza">🧴 Higiene e Beleza</option>
+        <option value="🧹 Limpeza">🧹 Limpeza</option>
+        <option value="🥤 Bebidas">🥤 Bebidas</option>
+        <option value="🍎 Frutas e Verduras">🍎 Frutas e Verduras</option>
+        <option value="❄️ Congelados">❄️ Congelados</option>
+        <option value="📦 Outros">📦 Outros</option>
+      </select>
+    </div>
+    <div class="field">
       <label>Quantidade</label>
       <input type="number" id="shop-qty" value="1" min="1" step="1">
     </div>
@@ -1172,34 +1187,67 @@ function renderCompras() {
       </button>` : ''}
     </div>`;
 
-    // Unchecked first, then checked
-    const sorted = [...list.filter(s => !s.checked), ...list.filter(s => s.checked)];
-    sorted.forEach(s => {
-      const match = data.find(d => d.name.toLowerCase() === s.name.toLowerCase());
-      let priceHtml = '';
-      if (match) {
-        const m = getLastPrice(match, 'market');
-        const net = getLastPrice(match, 'internet');
-        if (m || net) {
-          const best = m && net ? (m.value <= net.value ? {val: m.value, where:'Mercado'} : {val: net.value, where:'Internet'}) : (m ? {val: m.value, where:'Mercado'} : {val: net.value, where:'Internet'});
-          const itemTotal = best.val * (s.qty || 1);
-          priceHtml = `<div class="shop-price-info"><div class="best">${fmt(itemTotal)}</div><div class="where">${best.where}</div></div>`;
+    // Group by corredor
+    const corredores = {};
+    list.forEach(s => {
+      const c = s.corredor || '📦 Outros';
+      if (!corredores[c]) corredores[c] = [];
+      corredores[c].push(s);
+    });
+
+    // Sort: unchecked corredores first
+    const corrOrder = Object.keys(corredores).sort((a, b) => {
+      const aAllChecked = corredores[a].every(s => s.checked);
+      const bAllChecked = corredores[b].every(s => s.checked);
+      if (aAllChecked && !bAllChecked) return 1;
+      if (!aAllChecked && bAllChecked) return -1;
+      return a.localeCompare(b);
+    });
+
+    corrOrder.forEach(corredor => {
+      const items = corredores[corredor];
+      const allChecked = items.every(s => s.checked);
+      const doneCount = items.filter(s => s.checked).length;
+
+      html += `<div style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:${allChecked ? 'var(--muted)' : 'var(--text)'}">${corredor}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;color:var(--muted)">${doneCount}/${items.length}</span>
+            <button onclick="openShopModal('${corredor.replace(/'/g, "\'")}')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0;line-height:1">+</button>
+          </div>
+        </div>`;
+
+      // Unchecked first within corredor
+      const sorted = [...items.filter(s => !s.checked), ...items.filter(s => s.checked)];
+      sorted.forEach(s => {
+        const match = data.find(d => d.name.toLowerCase() === s.name.toLowerCase());
+        let priceHtml = '';
+        if (match) {
+          const m = getLastPrice(match, 'market');
+          const net = getLastPrice(match, 'internet');
+          if (m || net) {
+            const best = m && net ? (m.value <= net.value ? {val: m.value, where:'Mercado'} : {val: net.value, where:'Internet'}) : (m ? {val: m.value, where:'Mercado'} : {val: net.value, where:'Internet'});
+            const itemTotal = best.val * (s.qty || 1);
+            priceHtml = `<div class="shop-price-info"><div class="best">${fmt(itemTotal)}</div><div class="where">${best.where}</div></div>`;
+          }
         }
-      }
-      html += `<div class="shop-item ${s.checked ? 'checked' : ''}" id="shop-${s.id}">
-        <button class="shop-check ${s.checked ? 'checked' : ''}" onclick="toggleShopCheck('${s.id}')">✓</button>
-        <div style="flex:1">
-          <div class="shop-name">${s.name}</div>
-          ${s.qty > 1 ? `<div class="shop-qty">Qtd: ${s.qty}</div>` : ''}
-        </div>
-        ${priceHtml}
-        <button class="shop-del" onclick="removeShopItem('${s.id}')">✕</button>
-      </div>`;
+        html += `<div class="shop-item ${s.checked ? 'checked' : ''}">
+          <button class="shop-check ${s.checked ? 'checked' : ''}" onclick="toggleShopCheck('${s.id}')">✓</button>
+          <div style="flex:1">
+            <div class="shop-name">${s.name}</div>
+            ${s.qty > 1 ? `<div class="shop-qty">Qtd: ${s.qty}</div>` : ''}
+          </div>
+          ${priceHtml}
+          <button class="shop-del" onclick="removeShopItem('${s.id}')">✕</button>
+        </div>`;
+      });
+      html += `</div>`;
     });
   }
 
   if (list.length > 0) {
-    html += `<button class="btn-small" style="width:100%;margin-top:8px;justify-content:center" onclick="openShopModal()">
+    html += `<button class="btn-small" style="width:100%;margin-top:4px;margin-bottom:16px;justify-content:center" onclick="openShopModal()">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
       Adicionar mais itens
     </button>`;
@@ -1208,11 +1256,12 @@ function renderCompras() {
   container.innerHTML = html;
 }
 
-function openShopModal() {
+function openShopModal(corredor) {
   document.getElementById('shop-name').value = '';
   document.getElementById('shop-qty').value = '1';
   document.getElementById('shop-suggestions').style.display = 'none';
   document.getElementById('shop-price-preview').style.display = 'none';
+  if (corredor) document.getElementById('shop-corredor').value = corredor;
   document.getElementById('modal-shop').classList.add('open');
   setTimeout(() => document.getElementById('shop-name').focus(), 200);
 }
@@ -1266,8 +1315,9 @@ function addShopItem() {
   const name = document.getElementById('shop-name').value.trim();
   if (!name) { alert('Digite o nome do produto!'); return; }
   const qty = parseInt(document.getElementById('shop-qty').value) || 1;
+  const corredor = document.getElementById('shop-corredor').value;
   const list = loadShopList();
-  list.push({ id: Date.now().toString(), name, qty, checked: false });
+  list.push({ id: Date.now().toString(), name, qty, corredor, checked: false });
   saveShopList(list);
   closeModal('modal-shop');
   renderCompras();

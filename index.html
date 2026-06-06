@@ -1147,7 +1147,9 @@ function setTab(tab, el) {
   document.getElementById('filter-row').style.display = tab === 'lista' ? '' : 'none';
   document.querySelector('.search-wrap').style.display = tab === 'lista' ? '' : 'none';
   if (tab === 'resumo') renderResumo();
-  if (tab === 'compras') renderCompras();
+  if (tab === 'compras') {
+    loadShopFromFirebase().then(() => renderCompras());
+  }
 }
 
 function toggleSort() {
@@ -1175,7 +1177,33 @@ const SHOP_KEY = 'precomestre_shop_v1';
 function loadShopList() {
   try { return JSON.parse(localStorage.getItem(SHOP_KEY)) || []; } catch { return []; }
 }
-function saveShopList(d) { localStorage.setItem(SHOP_KEY, JSON.stringify(d)); }
+
+function saveShopList(d) {
+  localStorage.setItem(SHOP_KEY, JSON.stringify(d));
+  // Sync to Firebase
+  if (db) {
+    db.collection('config').doc('shoplist').set({ items: d })
+      .catch(e => console.log('shop sync error', e));
+  }
+}
+
+async function loadShopFromFirebase() {
+  if (!db) return loadShopList();
+  try {
+    const doc = await db.collection('config').doc('shoplist').get();
+    if (doc.exists && doc.data().items) {
+      const remote = doc.data().items;
+      localStorage.setItem(SHOP_KEY, JSON.stringify(remote));
+      return remote;
+    }
+    // Push local to firebase
+    const local = loadShopList();
+    if (local.length > 0) saveShopList(local);
+    return local;
+  } catch(e) {
+    return loadShopList();
+  }
+}
 
 function renderCompras() {
   const list = loadShopList();
